@@ -5,7 +5,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SOURCE_LEAD = "placeholder_entreprise_landing";
-const TYPE_LEAD = "entreprise";
+// Schema commercial_leads.type_lead CHECK : cfa / pme_industrie / eti /
+// grand_compte / interim / partenaire / autre. "entreprise" n'est pas accepté ;
+// on classifie en pme_industrie par défaut (cible DRH PME du placeholder).
+// TODO : si Soizic veut un type_lead "entreprise" générique → migration CHECK.
+const TYPE_LEAD = "pme_industrie";
 
 // Rate limit in-memory : 5 requêtes / IP / 60s.
 // In-memory côté Workers : suffisant pour un placeholder waitlist (1 instance
