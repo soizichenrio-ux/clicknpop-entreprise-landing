@@ -3,32 +3,32 @@
 import { useState } from "react";
 
 export interface SelectOption {
-  /** Label affiché à l'utilisateur dans le <select>. */
+  /** Label affiché dans le <select>. */
   label: string;
-  /** Valeur envoyée à l'API (=== label par défaut, mappé serveur). */
+  /** Valeur envoyée à l'API (mappée vers type_lead côté serveur). */
   value: string;
 }
 
 export interface SelectField {
-  /** Nom HTML + clé envoyée dans le body JSON. */
   name: string;
-  /** Label visible au-dessus du select. */
   label: string;
-  /** Placeholder de la première option vide (ex "Choisir..."). */
   placeholder: string;
-  /** Options de classification (ex 4 tailles entreprise OPCO). */
   options: SelectOption[];
 }
 
 interface WaitlistFormProps {
-  thirdFieldLabel: string;
-  thirdFieldPlaceholder: string;
-  thirdFieldName: "raison_sociale" | "nom_structure";
-  /** Optionnel : champ select obligatoire de classification (OPCO ou type structure). */
+  /** Champ texte libre optionnel (raison sociale / nom structure). Omettre = pas de champ. */
+  thirdFieldLabel?: string;
+  thirdFieldPlaceholder?: string;
+  thirdFieldName?: "raison_sociale" | "nom_structure";
+  /** Select de classification obligatoire (taille OPCO ou type structure). */
   fourthSelect?: SelectField;
+  /** Message affiché à la place du formulaire en cas de succès. */
+  successMessage?: string;
 }
 
 const NBSP = String.fromCharCode(0xa0);
+const DEFAULT_SUCCESS = "Merci. On vous écrit dès que l'app ouvre.";
 
 type Status = "idle" | "sending" | "success" | "error";
 
@@ -37,7 +37,9 @@ export default function WaitlistForm({
   thirdFieldPlaceholder,
   thirdFieldName,
   fourthSelect,
+  successMessage = DEFAULT_SUCCESS,
 }: WaitlistFormProps) {
+  const showThirdField = Boolean(thirdFieldLabel && thirdFieldPlaceholder && thirdFieldName);
   const [email, setEmail] = useState("");
   const [prenom, setPrenom] = useState("");
   const [thirdField, setThirdField] = useState("");
@@ -52,7 +54,9 @@ export default function WaitlistForm({
     try {
       const body: Record<string, string> = { email: email.trim().toLowerCase() };
       if (prenom.trim()) body.prenom = prenom.trim();
-      if (thirdField.trim()) body[thirdFieldName] = thirdField.trim();
+      if (showThirdField && thirdField.trim() && thirdFieldName) {
+        body[thirdFieldName] = thirdField.trim();
+      }
       if (fourthSelect && fourthValue) body[fourthSelect.name] = fourthValue;
 
       const res = await fetch("/api/waitlist", {
@@ -64,16 +68,21 @@ export default function WaitlistForm({
       const data = (await res.json().catch(() => ({ ok: false }))) as { ok?: boolean };
       if (res.ok && data.ok) {
         setStatus("success");
-        setEmail("");
-        setPrenom("");
-        setThirdField("");
-        setFourthValue("");
       } else {
         setStatus("error");
       }
     } catch {
       setStatus("error");
     }
+  }
+
+  // Doctrine Soizic : on success, le formulaire disparaît, seul le message reste.
+  if (status === "success") {
+    return (
+      <p className="mt-2 text-[15px] font-serif italic text-sauge leading-relaxed">
+        {successMessage}
+      </p>
+    );
   }
 
   return (
@@ -95,24 +104,24 @@ export default function WaitlistForm({
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="prenom" className="block text-xs uppercase tracking-[0.12em] text-sauge font-mono mb-2">
-            Prénom
-          </label>
-          <input
-            type="text"
-            id="prenom"
-            name="prenom"
-            autoComplete="given-name"
-            maxLength={50}
-            value={prenom}
-            onChange={(e) => setPrenom(e.target.value)}
-            placeholder="Votre prénom"
-            className="w-full px-4 py-3 rounded-xl border border-[#262A30]/15 bg-white text-ink placeholder:text-ink-soft/50 focus:outline-none focus:border-sauge focus:ring-2 focus:ring-sauge-light/40 transition-colors duration-150"
-          />
-        </div>
+      <div>
+        <label htmlFor="prenom" className="block text-xs uppercase tracking-[0.12em] text-sauge font-mono mb-2">
+          Prénom
+        </label>
+        <input
+          type="text"
+          id="prenom"
+          name="prenom"
+          autoComplete="given-name"
+          maxLength={50}
+          value={prenom}
+          onChange={(e) => setPrenom(e.target.value)}
+          placeholder="Prénom"
+          className="w-full px-4 py-3 rounded-xl border border-[#262A30]/15 bg-white text-ink placeholder:text-ink-soft/50 focus:outline-none focus:border-sauge focus:ring-2 focus:ring-sauge-light/40 transition-colors duration-150"
+        />
+      </div>
 
+      {showThirdField && thirdFieldName && (
         <div>
           <label htmlFor={thirdFieldName} className="block text-xs uppercase tracking-[0.12em] text-sauge font-mono mb-2">
             {thirdFieldLabel}
@@ -129,7 +138,7 @@ export default function WaitlistForm({
             className="w-full px-4 py-3 rounded-xl border border-[#262A30]/15 bg-white text-ink placeholder:text-ink-soft/50 focus:outline-none focus:border-sauge focus:ring-2 focus:ring-sauge-light/40 transition-colors duration-150"
           />
         </div>
-      </div>
+      )}
 
       {fourthSelect && (
         <div>
@@ -162,16 +171,11 @@ export default function WaitlistForm({
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full sm:w-auto bg-[#262A30] text-paper py-3 px-7 rounded-xl font-medium tracking-wide hover:bg-[#1A1D1B] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full bg-[#262A30] text-paper py-3 px-7 rounded-xl font-medium tracking-wide hover:bg-[#1A1D1B] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {status === "sending" ? "Envoi…" : `Prévenez-moi.${NBSP}→`}
       </button>
 
-      {status === "success" && (
-        <p className="text-sm text-sauge italic">
-          Merci&#8239;! On vous écrit dès que l&apos;app ouvre.
-        </p>
-      )}
       {status === "error" && (
         <p className="text-sm text-[#C49A6C] italic">
           Quelque chose n&apos;a pas marché. Re-essayez dans un instant.
