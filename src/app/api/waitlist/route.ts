@@ -5,11 +5,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SOURCE_LEAD = "placeholder_entreprise_landing";
-// Schema commercial_leads.type_lead CHECK : cfa / pme_industrie / eti /
-// grand_compte / interim / partenaire / autre. "entreprise" n'est pas accepté ;
-// on classifie en pme_industrie par défaut (cible DRH PME du placeholder).
-// TODO : si Soizic veut un type_lead "entreprise" générique → migration CHECK.
-const TYPE_LEAD = "pme_industrie";
+
+// Classification OPCO 2026 (décret 6 mars 2026) — schema commercial_leads
+// CHECK constraint refactorisé 17/05/2026. Mapping label UI → code SQL :
+const TAILLE_ENTREPRISE_MAP: Record<string, string> = {
+  "Moins de 11": "entreprise_tpe",
+  "11 à 49": "entreprise_pe",
+  "50 à 249": "entreprise_me",
+  "250 et plus": "entreprise_eti_ge",
+};
 
 // Rate limit in-memory : 5 requêtes / IP / 60s.
 // In-memory côté Workers : suffisant pour un placeholder waitlist (1 instance
@@ -53,11 +57,19 @@ export async function POST(req: Request) {
     email?: string;
     prenom?: string;
     raison_sociale?: string;
+    taille_entreprise?: string;
   };
 
   const email = (body.email ?? "").trim().toLowerCase();
   if (!email || !EMAIL_REGEX.test(email)) {
     return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
+  }
+
+  // Validation taille_entreprise obligatoire (mapping OPCO 2026).
+  const tailleLabel = (body.taille_entreprise ?? "").trim();
+  const typeLead = TAILLE_ENTREPRISE_MAP[tailleLabel];
+  if (!typeLead) {
+    return NextResponse.json({ ok: false, error: "invalid_taille_entreprise" }, { status: 400 });
   }
 
   const prenom = body.prenom?.trim().slice(0, 50) || null;
@@ -72,7 +84,7 @@ export async function POST(req: Request) {
     prenom,
     raison_sociale: raisonSociale,
     source_lead: SOURCE_LEAD,
-    type_lead: TYPE_LEAD,
+    type_lead: typeLead,
   });
 
   // Silencieux sur duplicate (UNIQUE email) — doctrine respect privacy.

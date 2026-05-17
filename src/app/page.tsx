@@ -53,7 +53,7 @@ export default function EntreprisePage() {
               Vous cherchez un job&nbsp;?
             </a>
             <a href="https://cfa.clicknpop.fr" className="hover:text-sauge-dark transition-colors">
-              CFA / OF
+              CFA / OF / CCI
             </a>
             <a href="https://clicknpop.fr" className="hover:text-sauge-dark transition-colors">
               ← Retour Click&apos;n Pop
@@ -114,6 +114,17 @@ export default function EntreprisePage() {
               thirdFieldLabel="Raison sociale"
               thirdFieldPlaceholder="Nom de votre entreprise"
               thirdFieldName="raison_sociale"
+              fourthSelect={{
+                name: "taille_entreprise",
+                label: "Combien d'employé·es dans votre structure ?",
+                placeholder: "Choisir...",
+                options: [
+                  { label: "Moins de 11", value: "Moins de 11" },
+                  { label: "11 à 49", value: "11 à 49" },
+                  { label: "50 à 249", value: "50 à 249" },
+                  { label: "250 et plus", value: "250 et plus" },
+                ],
+              }}
             />
           </div>
         </section>

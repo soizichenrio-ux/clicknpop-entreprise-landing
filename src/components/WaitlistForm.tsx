@@ -2,10 +2,30 @@
 
 import { useState } from "react";
 
+export interface SelectOption {
+  /** Label affiché à l'utilisateur dans le <select>. */
+  label: string;
+  /** Valeur envoyée à l'API (=== label par défaut, mappé serveur). */
+  value: string;
+}
+
+export interface SelectField {
+  /** Nom HTML + clé envoyée dans le body JSON. */
+  name: string;
+  /** Label visible au-dessus du select. */
+  label: string;
+  /** Placeholder de la première option vide (ex "Choisir..."). */
+  placeholder: string;
+  /** Options de classification (ex 4 tailles entreprise OPCO). */
+  options: SelectOption[];
+}
+
 interface WaitlistFormProps {
   thirdFieldLabel: string;
   thirdFieldPlaceholder: string;
-  thirdFieldName: "raison_sociale" | "nom_cfa";
+  thirdFieldName: "raison_sociale" | "nom_structure";
+  /** Optionnel : champ select obligatoire de classification (OPCO ou type structure). */
+  fourthSelect?: SelectField;
 }
 
 const NBSP = String.fromCharCode(0xa0);
@@ -16,10 +36,12 @@ export default function WaitlistForm({
   thirdFieldLabel,
   thirdFieldPlaceholder,
   thirdFieldName,
+  fourthSelect,
 }: WaitlistFormProps) {
   const [email, setEmail] = useState("");
   const [prenom, setPrenom] = useState("");
   const [thirdField, setThirdField] = useState("");
+  const [fourthValue, setFourthValue] = useState("");
   const [status, setStatus] = useState<Status>("idle");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,6 +53,7 @@ export default function WaitlistForm({
       const body: Record<string, string> = { email: email.trim().toLowerCase() };
       if (prenom.trim()) body.prenom = prenom.trim();
       if (thirdField.trim()) body[thirdFieldName] = thirdField.trim();
+      if (fourthSelect && fourthValue) body[fourthSelect.name] = fourthValue;
 
       const res = await fetch("/api/waitlist", {
         method: "POST",
@@ -44,6 +67,7 @@ export default function WaitlistForm({
         setEmail("");
         setPrenom("");
         setThirdField("");
+        setFourthValue("");
       } else {
         setStatus("error");
       }
@@ -106,6 +130,34 @@ export default function WaitlistForm({
           />
         </div>
       </div>
+
+      {fourthSelect && (
+        <div>
+          <label
+            htmlFor={fourthSelect.name}
+            className="block text-xs uppercase tracking-[0.12em] text-sauge font-mono mb-2"
+          >
+            {fourthSelect.label}
+          </label>
+          <select
+            id={fourthSelect.name}
+            name={fourthSelect.name}
+            required
+            value={fourthValue}
+            onChange={(e) => setFourthValue(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-[#262A30]/15 bg-white text-ink focus:outline-none focus:border-sauge focus:ring-2 focus:ring-sauge-light/40 transition-colors duration-150 appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236B8467%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_14px_center] bg-[length:18px_18px] pr-12"
+          >
+            <option value="" disabled>
+              {fourthSelect.placeholder}
+            </option>
+            {fourthSelect.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <button
         type="submit"
